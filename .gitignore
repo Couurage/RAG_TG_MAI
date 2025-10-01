@@ -35,7 +35,7 @@ uploads/
 uploads/
 *.pdf
 *.docx
-
+*.txt
 
 # --- конфигурация ---
 .env
@@ -47,3 +47,5 @@ uploads/
 build/
 dist/
 *.egg-info/
+
+!requirements.txt
