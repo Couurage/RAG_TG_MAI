@@ -35,7 +35,7 @@ uploads/
 uploads/
 *.pdf
 *.docx
-*.txt
+
 
 # --- конфигурация ---
 .env
