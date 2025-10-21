@@ -22,6 +22,7 @@ def _parse_bool(val: str | None, default: bool) -> bool:
 
 class GigaChatClient:
     API_BASE = os.getenv("GIGACHAT_API_BASE", "https://gigachat.devices.sberbank.ru/api")
+
     OAUTH_URL = os.getenv("GIGACHAT_OAUTH_URL", "https://ngw.devices.sberbank.ru:9443/api/v2/oauth")
     SCOPE = os.getenv("GIGACHAT_SCOPE", "GIGACHAT_API_PERS")
 
