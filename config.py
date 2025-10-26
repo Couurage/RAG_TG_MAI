@@ -92,9 +92,6 @@ class Settings(BaseSettings):
 # Инициализируем единожды
 settings = Settings()
 
-# ========= Совместимость с текущими импортами из твоего кода =========
-# Многие модули у тебя делают так: from backend.config import DB_PATH, COLLECTION, VECTOR_FIELD, DIMENSION, SERVICE_URL, TOP_K_DEFAULT
-# Ниже — «тонкие» алиасы к полям settings, чтобы ничего не ломать.
 
 
 # Embedding service (совместимость)
