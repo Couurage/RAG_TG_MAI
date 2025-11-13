@@ -1,0 +1,17 @@
+version: '3.5'
+
+services:
+  milvus:
+    image: milvusdb/milvus:v2.4.4
+    container_name: milvus-standalone
+    environment:
+      - MILVUS_DEPLOY_MODE=STANDALONE
+      - ETCD_USE_EMBED=true
+      - MINIO_USE_EMBED=true
+      - LOG_LEVEL=info
+    volumes:
+      - ./milvus_data:/var/lib/milvus
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    restart: unless-stopped
