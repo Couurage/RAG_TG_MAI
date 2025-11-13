@@ -5,9 +5,6 @@ from transformers import AutoTokenizer, AutoModel
 import numpy as np
 
 class EmbeddingGemma300M:
-    """
-    Эмбеддинги для unsloth/embeddinggemma-300m-qat-q8_0-unquantized
-    """
     def __init__(
         self,
         model_name: str = "unsloth/embeddinggemma-300m-qat-q8_0-unquantized",

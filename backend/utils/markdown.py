@@ -18,10 +18,7 @@ def convert_to_md(
     out_dir: str | Path = "data_md",
     extract_images: bool = False,
 ) -> Path:
-    """
-    Конвертирует документ в Markdown через markitdown.
-    Возвращает путь к .md файлу.
-    """
+
     in_path = Path(input_path)
     if not in_path.exists():
         raise FileNotFoundError(in_path)
