@@ -1,5 +1,5 @@
 MILVUS_HOST = "localhost"
 MILVUS_PORT = "19530"
-MILVUS_DB_NAME = "rag_db"
+MILVUS_DB_NAME = "default"
 MILVUS_COLLECTION = "rag_chunks"
 EMBED_DIM = 768
