@@ -97,6 +97,18 @@ class Milvus:
         coll.load()
         return coll
 
+    def clear(self):
+        """
+        Полностью очищает коллекцию, но сохраняет её схему и индексы.
+        """
+        print(f"⚠️ Удаляю все данные из коллекции '{MILVUS_COLLECTION}'...")
+
+        # Удаляем все строки по фильтру (условие всегда True)
+        self.collection.delete(expr="id >= 0")
+        self.collection.flush()
+
+        print("✅ Коллекция очищена")
+
     def add_chunks(
         self,
         doc_id: int,

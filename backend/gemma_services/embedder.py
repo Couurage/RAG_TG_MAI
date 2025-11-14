@@ -4,7 +4,7 @@ import torch
 from transformers import AutoTokenizer, AutoModel
 import numpy as np
 
-class EmbeddingGemma300M:
+class Embedder:
     def __init__(
         self,
         model_name: str = "unsloth/embeddinggemma-300m-qat-q8_0-unquantized",
@@ -25,8 +25,6 @@ class EmbeddingGemma300M:
             trust_remote_code=trust_remote_code,
         ).to(self.device)
         self.model.eval()
-
-        # определим размерность по одному прогону
         self._dim_cache = None
 
     @torch.no_grad()
