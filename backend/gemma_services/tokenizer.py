@@ -46,13 +46,10 @@ class Tokenizer:
             chunks.append(current)
         return chunks
 
-    def chunk_file(self, path: str | Path) -> List[str]:
-        text = Path(path).read_text(encoding="utf-8")
-        return self.chunk_markdown(text)
-
     def chunk_folder(self, folder: str | Path) -> dict[str, List[str]]:
         folder = Path(folder)
-        result = {}
+        result: dict[str, List[str]] = {}
         for file in folder.glob("*.md"):
-            result[file.name] = self.chunk_file(file)
+            text = file.read_text(encoding="utf-8")
+            result[file.name] = self.chunk_markdown(text)
         return result

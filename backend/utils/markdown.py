@@ -17,8 +17,7 @@ def convert_to_md(
     input_path: str | Path,
     out_dir: str | Path = "data_md",
     extract_images: bool = False,
-) -> Path:
-
+) -> tuple[Path, int]:
     in_path = Path(input_path)
     if not in_path.exists():
         raise FileNotFoundError(in_path)
@@ -29,13 +28,15 @@ def convert_to_md(
     md = MarkItDown()
     result = md.convert(str(in_path))
 
-    base = _safe_stem(in_path)
-    md_path = out_dir / f"{base}.md"
-    md_text = result.text_content or ""
+    full_hash = hashlib.sha1(in_path.read_bytes()).hexdigest()
+    short_hash = full_hash[:10]
 
-    # грубая постобработка
-    md_text = md_text.replace("\r\n", "\n").strip() + "\n"
+    base = f"{in_path.stem}-{short_hash}"
+    md_path = out_dir / f"{base}.md"
+    md_text = (result.text_content or "").replace("\r\n", "\n").strip() + "\n"
 
     md_path.write_text(md_text, encoding="utf-8")
     log.info("Saved: %s", md_path)
-    return md_path
+
+    doc_id = int(short_hash, 16)
+    return md_path, doc_id
