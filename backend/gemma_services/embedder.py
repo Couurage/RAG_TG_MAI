@@ -14,8 +14,8 @@ class Embedder:
         trust_remote_code: bool = True,
     ):
         self.model_name = model_name
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.dtype = dtype or (torch.bfloat16 if self.device == "cuda" else torch.float32)
+        self.device = device or ("cuda" if torch.cuda.is_available() elif "mps" if torch.backends.mps.is_available() else "cpu")
+        self.dtype = dtype or (torch.bfloat16 if self.device == "cuda" or self.device == "mps" else torch.float32)
         self.max_length = max_length
 
         self.tok = AutoTokenizer.from_pretrained(model_name, use_fast=True, trust_remote_code=trust_remote_code)
