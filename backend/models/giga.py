@@ -7,6 +7,15 @@ from dotenv import load_dotenv
 from langchain_gigachat.chat_models import GigaChat
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from config import (
+    GIGACHAT_BASIC,
+    GIGACHAT_API_BASE,
+    GIGACHAT_OAUTH_URL,
+    GIGACHAT_SCOPE,
+    GIGACHAT_MODEL,
+    GIGACHAT_VERIFY_SSL,
+)
+
 load_dotenv()
 
 
@@ -21,10 +30,10 @@ def _parse_bool(val: str | None, default: bool) -> bool:
 
 
 class GigaChatClient:
-    API_BASE = os.getenv("GIGACHAT_API_BASE", "https://gigachat.devices.sberbank.ru/api")
+    API_BASE = GIGACHAT_API_BASE
 
-    OAUTH_URL = os.getenv("GIGACHAT_OAUTH_URL", "https://ngw.devices.sberbank.ru:9443/api/v2/oauth")
-    SCOPE = os.getenv("GIGACHAT_SCOPE", "GIGACHAT_API_PERS")
+    OAUTH_URL = GIGACHAT_OAUTH_URL
+    SCOPE = GIGACHAT_SCOPE
 
     def __init__(
         self,
@@ -37,18 +46,18 @@ class GigaChatClient:
         backoff_sec: float = 0.5,
         verify_ssl: bool = True,
     ):
-        self.credentials = api_key or os.getenv("GIGACHAT_BASIC")
+        self.credentials = api_key or GIGACHAT_BASIC
         if not self.credentials:
             raise GigaChatLLMError("Не найден GIGACHAT_BASIC (Authorization key base64).")
 
-        self.model: str = (model or os.getenv("GIGACHAT_MODEL") or "GigaChat-2").strip()
+        self.model: str = (model or GIGACHAT_MODEL or "GigaChat-2").strip()
         self.temperature: float = float(temperature)
         self.timeout: float = float(timeout)
         self.retries: int = max(0, int(max_retries))
         self.backoff_sec: float = max(0.0, float(backoff_sec))
 
         # Если переменная окружения задана — парсим её; иначе уважаем аргумент конструктора.
-        env_ssl = os.getenv("GIGACHAT_VERIFY_SSL")
+        env_ssl = GIGACHAT_VERIFY_SSL
         self.verify_ssl: bool = _parse_bool(env_ssl, verify_ssl)
 
         # Создаём клиента один раз и переиспользуем
