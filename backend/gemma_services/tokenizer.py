@@ -3,25 +3,36 @@ from pathlib import Path
 from typing import List, Sequence, Optional, Dict, Any
 
 class Tokenizer:
-    def __init__(self, model_name: str = "unsloth/embeddinggemma-300m-qat-q8_0-unquantized",
-                 max_tokens: int = 250, overlap: int = 50):
+    def __init__(
+        self,
+        model_name: str = "unsloth/embeddinggemma-300m-qat-q8_0-unquantized",
+        max_tokens: int = 250,
+        overlap: int = 50,
+    ):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        if overlap >= max_tokens:
+            raise ValueError("overlap must be smaller than max_tokens to avoid infinite loops")
         self.max_tokens = max_tokens
         self.overlap = overlap
 
     def count_tokens(self, text: str) -> int:
-        return len(self.tokenizer.encode(text))
+        return len(self.tokenizer.encode(text, add_special_tokens=False))
 
     def _md_to_blocks(self, md: str) -> List[str]:
         return [b.strip() for b in md.split("\n\n") if b.strip()]
 
     def _split_long_block(self, text: str) -> List[str]:
-        toks = self.tokenizer.encode(text)
+        toks = self.tokenizer.encode(text, add_special_tokens=False)
         res = []
         start = 0
         while start < len(toks):
             end = start + self.max_tokens
-            chunk = self.tokenizer.decode(toks[start:end])
+            decoded = self.tokenizer.decode(
+                toks[start:end],
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=True,
+            )
+            chunk = decoded.strip()
             res.append(chunk)
             start += self.max_tokens - self.overlap
         return res

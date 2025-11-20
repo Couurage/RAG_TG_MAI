@@ -36,6 +36,12 @@ uploads/
 *.pdf
 *.docx
 *.txt
+cli_manual_rag.py
+*.md
+*.pdf
+*.docx
+*.txt
+!README.md
 
 # --- конфигурация ---
 .env
@@ -47,5 +53,5 @@ uploads/
 build/
 dist/
 *.egg-info/
-
+.volumes/
 !requirements.txt

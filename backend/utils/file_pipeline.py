@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import List, Optional, Dict
 
@@ -9,6 +10,9 @@ from backend.gemma_services.embedder import Embedder
 from backend.utils.markdown import convert_to_md
 
 
+log = logging.getLogger(__name__)
+
+
 class RAGPipeline:
     def __init__(
         self,
@@ -16,9 +20,10 @@ class RAGPipeline:
         tokenizer: Optional[Tokenizer] = None,
         embedder: Optional[Embedder] = None,
     ):
-        self.milvus = milvus or Milvus()
-        self.tokenizer = tokenizer or Tokenizer()
         self.embedder = embedder or Embedder()
+        embed_dim = self.embedder.dim()
+        self.milvus = milvus or Milvus(embed_dim=embed_dim)
+        self.tokenizer = tokenizer or Tokenizer()
 
     def _file_to_markdown(self, path: Path) -> tuple[int, str]:
         md_path, doc_id = convert_to_md(path)
@@ -37,9 +42,11 @@ class RAGPipeline:
         if not chunks:
             return []
 
-        embeddings: List[List[float]] = [
-            self.embedder.embed(chunk) for chunk in chunks
-        ]
+        removed = self.milvus.delete_doc(doc_id)
+        if removed:
+            log.info("Removed %s old chunks for doc_id=%s (%s)", removed, doc_id, input_path)
+
+        embeddings: List[List[float]] = self.embedder.embed(chunks)
 
         sections: List[Optional[str]] = [section] * len(chunks)
         source_path: str = str(input_path)
@@ -73,12 +80,30 @@ class RAGPipeline:
                 continue
             try:
                 ids = self.index_file(path, section=section)
-                results[path.name] = ids
-            except Exception:
-                pass
+                results[str(path)] = ids
+            except Exception as exc:
+                log.exception("Failed to index %s: %s", path, exc)
 
         return results
 
     def search(self, query: str, top_k: int = 5):
-        query_emb: List[float] = self.embedder.embed(query)
-        return self.milvus.search(query_emb=query_emb, top_k=top_k)
+        query_embs = self.embedder.embed([query])
+        if not query_embs:
+            raise ValueError("Query produced no embedding")
+        query_emb: List[float] = query_embs[0]
+        hits = self.milvus.search(query_emb=query_emb, top_k=top_k)
+
+        formatted = []
+        for hit in hits:
+            entity = hit.entity
+            formatted.append(
+                {
+                    "score": float(hit.distance),
+                    "doc_id": entity.get("doc_id"),
+                    "chunk_id": entity.get("chunk_id"),
+                    "section": entity.get("section"),
+                    "source_path": entity.get("source_path"),
+                    "content": entity.get("content"),
+                }
+            )
+        return formatted

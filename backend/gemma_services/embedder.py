@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Optional
+from typing import List, Optional, Sequence
 import torch
 from transformers import AutoTokenizer, AutoModel
 import numpy as np
@@ -28,13 +28,18 @@ class Embedder:
         self._dim_cache = None
 
     @torch.no_grad()
-    def embed(self, texts: List[str], batch_size: int = 16) -> List[List[float]]:
-        if not texts:
+    def embed(self, texts: str | Sequence[str], batch_size: int = 16) -> List[List[float]]:
+        if isinstance(texts, str):
+            batch_texts: List[str] = [texts]
+        else:
+            batch_texts = list(texts)
+
+        if not batch_texts:
             return []
 
         out: List[List[float]] = []
-        for i in range(0, len(texts), batch_size):
-            batch = texts[i:i+batch_size]
+        for i in range(0, len(batch_texts), batch_size):
+            batch = batch_texts[i : i + batch_size]
             toks = self.tok(
                 batch,
                 padding=True,
