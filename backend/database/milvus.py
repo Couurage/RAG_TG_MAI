@@ -21,8 +21,9 @@ from config import (
 
 
 class Milvus:
-    def __init__(self, alias: str = "default"):
+    def __init__(self, alias: str = "default", embed_dim: Optional[int] = None):
         self.alias = alias
+        self.embed_dim = embed_dim or EMBED_DIM
         connections.connect(
             alias,
             host=MILVUS_HOST,
@@ -35,7 +36,17 @@ class Milvus:
 
     def _get_or_create_collection(self) -> Collection:
         if utility.has_collection(MILVUS_COLLECTION, using=self.alias):
-            return Collection(MILVUS_COLLECTION, using=self.alias)
+            collection = Collection(MILVUS_COLLECTION, using=self.alias)
+            embed_field = next(
+                (field for field in collection.schema.fields if field.name == "embedding"),
+                None,
+            )
+            if embed_field and embed_field.params.get("dim") != self.embed_dim:
+                raise ValueError(
+                    f"Existing collection '{MILVUS_COLLECTION}' has dim={embed_field.params.get('dim')} "
+                    f"but embedder reports dim={self.embed_dim}. Drop the collection or adjust config."
+                )
+            return collection
 
         fields = [
             FieldSchema(
@@ -70,7 +81,7 @@ class Milvus:
             FieldSchema(
                 name="embedding",
                 dtype=DataType.FLOAT_VECTOR,
-                dim=EMBED_DIM,
+                dim=self.embed_dim,
             ),
         ]
 
@@ -173,3 +184,15 @@ class Milvus:
             output_fields=["doc_id", "chunk_id", "source_path", "section", "content"],
         )
         return res[0]
+
+    def delete_doc(self, doc_id: int) -> int:
+        """
+        Удаляет все чанки документа с указанным doc_id.
+        Возвращает число удалённых записей.
+        """
+        self.collection.load()
+        result = self.collection.delete(expr=f"doc_id == {doc_id}")
+        deleted = getattr(result, "delete_count", 0)
+        if deleted:
+            self.collection.flush()
+        return deleted
