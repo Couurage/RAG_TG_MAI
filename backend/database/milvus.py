@@ -46,6 +46,12 @@ class Milvus:
                     f"Existing collection '{MILVUS_COLLECTION}' has dim={embed_field.params.get('dim')} "
                     f"but embedder reports dim={self.embed_dim}. Drop the collection or adjust config."
                 )
+            has_owner = any(field.name == "owner_id" for field in collection.schema.fields)
+            if not has_owner:
+                raise ValueError(
+                    f"Existing collection '{MILVUS_COLLECTION}' lacks field 'owner_id'. "
+                    "Drop the collection or migrate schema to continue."
+                )
             return collection
 
         fields = [
@@ -54,6 +60,10 @@ class Milvus:
                 dtype=DataType.INT64,
                 is_primary=True,
                 auto_id=True,
+            ),
+            FieldSchema(
+                name="owner_id",
+                dtype=DataType.INT64,
             ),
             FieldSchema(
                 name="doc_id",
@@ -122,6 +132,7 @@ class Milvus:
 
     def add_chunks(
         self,
+        owner_id: Optional[int],
         doc_id: int,
         source_path: str,
         sections: List[Optional[str]],
@@ -144,6 +155,7 @@ class Milvus:
         chunk_ids = list(range(n))
 
         data = [
+            [owner_id] * n,
             [doc_id] * n,
             chunk_ids,
             [source_path] * n,
@@ -153,6 +165,7 @@ class Milvus:
         ]
 
         insert_fields = [
+            "owner_id",
             "doc_id",
             "chunk_id",
             "source_path",
@@ -169,6 +182,10 @@ class Milvus:
         self,
         query_emb: List[float],
         top_k: int = 5,
+        *,
+        doc_id: Optional[int] = None,
+        source_path: Optional[str] = None,
+        owner_id: Optional[int] = None,
     ):
         self.collection.load()
         search_params = {
@@ -176,22 +193,53 @@ class Milvus:
             "params": {"nprobe": 16},
         }
 
+        expr_parts = []
+        if doc_id is not None:
+            expr_parts.append(f"doc_id == {int(doc_id)}")
+        elif source_path is not None:
+            safe_path = str(source_path).replace("\\", "\\\\").replace('"', '\\"')
+            expr_parts.append(f'source_path == "{safe_path}"')
+        if owner_id is not None:
+            expr_parts.append(f"owner_id == {int(owner_id)}")
+        expr = " and ".join(expr_parts) if expr_parts else None
+
         res = self.collection.search(
             data=[query_emb],
             anns_field="embedding",
             param=search_params,
             limit=top_k,
+            expr=expr,
             output_fields=["doc_id", "chunk_id", "source_path", "section", "content"],
         )
         return res[0]
 
-    def delete_doc(self, doc_id: int) -> int:
+    def delete_doc(
+        self,
+        doc_id: Optional[int] = None,
+        *,
+        source_path: Optional[str] = None,
+        owner_id: Optional[int] = None,
+    ) -> int:
         """
-        Удаляет все чанки документа с указанным doc_id.
+        Удаляет все чанки документа по doc_id или source_path.
         Возвращает число удалённых записей.
         """
         self.collection.load()
-        result = self.collection.delete(expr=f"doc_id == {doc_id}")
+        if doc_id is None and source_path is None:
+            raise ValueError("doc_id or source_path must be specified")
+
+        expr_parts = []
+        if doc_id is not None:
+            expr_parts.append(f"doc_id == {int(doc_id)}")
+        elif source_path is not None:
+            safe_path = str(source_path).replace("\\", "\\\\").replace('"', '\\"')
+            expr_parts.append(f'source_path == "{safe_path}"')
+        if owner_id is not None:
+            expr_parts.append(f"owner_id == {int(owner_id)}")
+
+        expr = " and ".join(expr_parts)
+
+        result = self.collection.delete(expr=expr)
         deleted = getattr(result, "delete_count", 0)
         if deleted:
             self.collection.flush()

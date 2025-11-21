@@ -1,0 +1,15 @@
+.git
+__pycache__
+.mypy_cache
+.pytest_cache
+.venv
+*.pyc
+*.pyo
+*.pyd
+*.so
+volumes
+data_md
+book2013-2.docx
+Психология.pdf
+.env
+
