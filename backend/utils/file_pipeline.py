@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 from backend.database.milvus import Milvus
 from backend.gemma_services.tokenizer import Tokenizer
@@ -11,6 +12,14 @@ from backend.utils.markdown import convert_to_md
 
 
 log = logging.getLogger(__name__)
+
+
+@dataclass
+class IndexResult:
+    doc_id: int
+    chunk_ids: List[int]
+    source_path: str
+    owner_id: Optional[int] = None
 
 
 class RAGPipeline:
@@ -34,24 +43,28 @@ class RAGPipeline:
         self,
         input_path: str | Path,
         section: str = "default",
-    ) -> List[int]:
+        *,
+        owner_id: Optional[int] = None,
+    ) -> IndexResult:
         input_path = Path(input_path)
         doc_id, md_text = self._file_to_markdown(input_path)
         chunks: List[str] = self.tokenizer.chunk_markdown(md_text)
 
+        source_path: str = str(input_path)
         if not chunks:
-            return []
+            return IndexResult(doc_id=doc_id, chunk_ids=[], source_path=source_path, owner_id=owner_id)
 
-        removed = self.milvus.delete_doc(doc_id)
+        removed = self.milvus.delete_doc(doc_id=doc_id, owner_id=owner_id)
         if removed:
             log.info("Removed %s old chunks for doc_id=%s (%s)", removed, doc_id, input_path)
 
         embeddings: List[List[float]] = self.embedder.embed(chunks)
 
         sections: List[Optional[str]] = [section] * len(chunks)
-        source_path: str = str(input_path)
+        owner_value = int(owner_id) if owner_id is not None else -1
 
         ids: List[int] = self.milvus.add_chunks(
+            owner_id=owner_value,
             doc_id=doc_id,
             source_path=source_path,
             sections=sections,
@@ -59,16 +72,16 @@ class RAGPipeline:
             embeddings=embeddings,
         )
 
-        return ids
+        return IndexResult(doc_id=doc_id, chunk_ids=ids, source_path=source_path, owner_id=owner_value)
 
     def index_folder(
         self,
         folder: str | Path,
         section: str = "default",
         recursive: bool = False,
-    ) -> Dict[str, List[int]]:
+    ) -> Dict[str, IndexResult]:
         folder = Path(folder)
-        results: Dict[str, List[int]] = {}
+        results: Dict[str, IndexResult] = {}
 
         if not folder.exists():
             raise FileNotFoundError(folder)
@@ -79,19 +92,33 @@ class RAGPipeline:
             if not path.is_file():
                 continue
             try:
-                ids = self.index_file(path, section=section)
-                results[str(path)] = ids
+                result = self.index_file(path, section=section)
+                results[str(path)] = result
             except Exception as exc:
                 log.exception("Failed to index %s: %s", path, exc)
 
         return results
 
-    def search(self, query: str, top_k: int = 5):
+    def search(
+        self,
+        query: str,
+        top_k: int = 5,
+        *,
+        doc_id: Optional[int] = None,
+        source_path: Optional[str] = None,
+        owner_id: Optional[int] = None,
+    ):
         query_embs = self.embedder.embed([query])
         if not query_embs:
             raise ValueError("Query produced no embedding")
         query_emb: List[float] = query_embs[0]
-        hits = self.milvus.search(query_emb=query_emb, top_k=top_k)
+        hits = self.milvus.search(
+            query_emb=query_emb,
+            top_k=top_k,
+            doc_id=doc_id,
+            source_path=source_path,
+            owner_id=owner_id,
+        )
 
         formatted = []
         for hit in hits:
@@ -107,3 +134,28 @@ class RAGPipeline:
                 }
             )
         return formatted
+
+    def remove_document(
+        self,
+        *,
+        doc_id: Optional[int] = None,
+        source_path: Optional[str] = None,
+        owner_id: Optional[int] = None,
+    ) -> int:
+        """
+        Удаляет документ из Milvus по doc_id или source_path.
+        Возвращает количество удалённых чанков.
+        """
+        if doc_id is None and source_path is None:
+            raise ValueError("doc_id or source_path must be provided")
+
+        removed = self.milvus.delete_doc(doc_id=doc_id, source_path=source_path, owner_id=owner_id)
+        if removed:
+            log.info(
+                "Removed %s chunks for doc_id=%s source_path=%s owner_id=%s",
+                removed,
+                doc_id,
+                source_path,
+                owner_id,
+            )
+        return removed

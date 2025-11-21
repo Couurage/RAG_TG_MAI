@@ -60,6 +60,36 @@ services:
       - "etcd"
       - "minio"
 
+  rag_api:
+    container_name: rag-api
+    image: rag_tg_mai-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      MILVUS_HOST: standalone
+      MILVUS_PORT: 19530
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data_md:/app/data_md
+      - ./volumes/hf_cache:/root/.cache/huggingface
+    depends_on:
+      - standalone
+
+  rag_bot:
+    container_name: rag-bot
+    image: rag_tg_mai-app
+    env_file:
+      - .env
+    environment:
+      RAG_API_BASE: http://rag_api:8000
+    command: ["python", "-m", "bot.main"]
+    depends_on:
+      - rag_api
+
 networks:
   default:
     name: milvus

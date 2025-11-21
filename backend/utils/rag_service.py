@@ -51,8 +51,22 @@ class RAGService:
             "Сформулируй понятный ответ, обязательно опираясь на контекст выше."
         )
 
-    def answer(self, question: str, top_k: int = 5) -> Tuple[str, List[Dict]]:
-        hits = self.pipeline.search(question, top_k=top_k)
+    def answer(
+        self,
+        question: str,
+        top_k: int = 5,
+        *,
+        doc_id: Optional[int] = None,
+        source_path: Optional[str] = None,
+        owner_id: Optional[int] = None,
+    ) -> Tuple[str, List[Dict]]:
+        hits = self.pipeline.search(
+            question,
+            top_k=top_k,
+            doc_id=doc_id,
+            source_path=source_path,
+            owner_id=owner_id,
+        )
         if not hits:
             return "", []
 
@@ -64,3 +78,11 @@ class RAGService:
         answer = self.llm.get_answer(self.system_prompt, user_prompt)
         return answer, hits
 
+    def remove_document(
+        self,
+        *,
+        doc_id: Optional[int] = None,
+        source_path: Optional[str] = None,
+        owner_id: Optional[int] = None,
+    ) -> int:
+        return self.pipeline.remove_document(doc_id=doc_id, source_path=source_path, owner_id=owner_id)
