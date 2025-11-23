@@ -1,8 +1,12 @@
 from __future__ import annotations
+import logging
+import time
 from typing import List, Optional, Sequence
 import torch
 from transformers import AutoTokenizer, AutoModel
 import numpy as np
+
+log = logging.getLogger(__name__)
 
 class Embedder:
     def __init__(
@@ -13,19 +17,36 @@ class Embedder:
         max_length: int = 2048,
         trust_remote_code: bool = True,
     ):
+        start_total = time.time()
         self.model_name = model_name
-        self.device = device or ("cuda" if torch.cuda.is_available() elif "mps" if torch.backends.mps.is_available() else "cpu")
+        if device:
+            self.device = device
+        elif torch.cuda.is_available():
+            self.device = "cuda"
+        elif torch.backends.mps.is_available():
+            self.device = "mps"
+        else:
+            self.device = "cpu"
         self.dtype = dtype or (torch.bfloat16 if self.device == "cuda" or self.device == "mps" else torch.float32)
         self.max_length = max_length
 
+        log.info("[Embedder 1/3] Loading tokenizer %s", model_name)
+        t0 = time.time()
         self.tok = AutoTokenizer.from_pretrained(model_name, use_fast=True, trust_remote_code=trust_remote_code)
+        log.info("[Embedder 1/3] Tokenizer ready in %.1fs", time.time() - t0)
+
+        log.info("[Embedder 2/3] Loading model %s on %s (dtype=%s)", model_name, self.device, self.dtype)
+        t1 = time.time()
         self.model = AutoModel.from_pretrained(
             model_name,
             torch_dtype=self.dtype,
             trust_remote_code=trust_remote_code,
         ).to(self.device)
+        log.info("[Embedder 2/3] Model ready in %.1fs", time.time() - t1)
         self.model.eval()
         self._dim_cache = None
+
+        log.info("[Embedder 3/3] Init done in %.1fs", time.time() - start_total)
 
     @torch.no_grad()
     def embed(self, texts: str | Sequence[str], batch_size: int = 16) -> List[List[float]]:
