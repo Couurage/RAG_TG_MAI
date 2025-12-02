@@ -7,7 +7,6 @@ import httpx
 
 
 class RAGClient:
-    """HTTP-клиент для общения с FastAPI."""
 
     def __init__(self, base_url: str, *, timeout: float = 60.0) -> None:
         self._client = httpx.AsyncClient(base_url=base_url.rstrip("/"), timeout=timeout)

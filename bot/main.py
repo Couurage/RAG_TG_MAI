@@ -15,11 +15,8 @@ from bot.rag_client import RAGClient
 
 router = Router()
 
-# активный doc_id на пользователя
 user_docs: Dict[int, int] = {}
 
-# история документов пользователя:
-# user_id -> [{"doc_id": int, "name": str}, ...]
 user_doc_history: Dict[int, List[Dict[str, Any]]] = {}
 
 rag_client = RAGClient(settings.rag_api_base, timeout=settings.request_timeout)
@@ -47,7 +44,6 @@ async def _progress_notifier(message: Message, stop_event: asyncio.Event) -> Non
         try:
             await message.edit_text(f"⏳ Индексация идёт... {elapsed} c (шаг {tick})")
         except Exception:
-            # если сообщение удалили или бот не может обновить — выходим
             return
 
 
