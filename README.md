@@ -28,7 +28,7 @@ RAG позволяет модели не "угадывать", а опирать
 ---
 
 ## 🧱 Технологический стек
-- Python 3.12, FastAPI, httpx
+- Python 3.12, FastAPI
 - Aiogram 3 (Telegram-бот)
 - HuggingFace Transformers + `unsloth/embeddinggemma-300m-qat-q8_0-unquantized`
 - Milvus Standalone (pymilvus)
@@ -60,7 +60,6 @@ Dockerfile
 git clone https://github.com/Couurage/RAG_TG_MAI.git
 cd RAG_TG_MAI
 cp .env.example .env
-mkdir -p data_md volumes/hf_cache
 ```
 
 2. Заполнить `.env`:
@@ -74,7 +73,7 @@ TELEGRAM_BOT_TOKEN=...           # если нужен бот
 ```bash
 docker compose up -d --build
 ```
-Первый старт качает модель (~1 мин). Прогресс загрузки виден в логах `rag_api`.
+Первый старт качает модель (~10 мин). Прогресс загрузки виден в логах `rag_api`.
 
 4. Проверка:
 ```bash
